@@ -101,9 +101,6 @@ class MenuSerializer(serializers.ModelSerializer):
             Tag.objects.bulk_create(tags_instance, batch_size=10)
         return instance
 
-    def update(self, instance, validated_data):
-        return
-
     def to_representation(self, instance):
         return {
             'id': instance.id,
