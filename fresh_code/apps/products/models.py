@@ -24,12 +24,12 @@ class Menu(models.Model):
 
 
 class Item(models.Model):
-    L, M, S = ('large', 'medium', 'small')
+    L, M, S = ('L', 'M', 'S')
 
     SIZE_STATE_CHOICES = (
-        (L, 'LARGE'),
-        (M, 'MEDIUM'),
-        (S, 'SMALL'),
+        (L, 'L'),
+        (M, 'M'),
+        (S, 'S'),
     )
 
     name = models.CharField(max_length=50)
