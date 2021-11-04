@@ -7,6 +7,7 @@ from api.permissions import CustomAuthenticated
 from api.pagination import CustomPagination
 
 
+# CRUD 모든 행동들이 각 mixin에 적혀있고 그것들을 상속받아 사용하게됩니다.
 class ProductViewSet(CreateModelMixin,
                      ListModelMixin,
                      RetrieveModelMixin,
@@ -14,12 +15,21 @@ class ProductViewSet(CreateModelMixin,
                      DestroyModelMixin,
                      GenericViewSet):
 
+    # 하나의 viewset에서 사용한 queryset입니다.
     queryset = Menu.objects.all()
+    # 하나의 viewset에서 사용한 serializer입니다.
     serializer_class = MenuSerializer
+    # view에서 사용될 권한을 설정할 수 있습니다.
+    # IsAuthenticated 로그인된 유저인지 확인합니다.
+    # CustomAuthenticated 제가 직접 만든 권한이며 로그인한 유저가 ADMIN인지 확인합니다.
     permission_classes = [permissions.IsAuthenticated, CustomAuthenticated]
+    # 선언할시 pagination이 자동으로 설정됩니다.
     pagination_class = CustomPagination
 
+    # 조건중 admin권한만 가능한 액션들이 있기때문에 특정 액션(읽기)을 할시 로그인한 유저로 권한을 낮췄습니다.
     def get_permissions(self):
+        # self.action할시 CRUD중 어떤 액션인지 알 수 있습니다.
+        # retrieve 상세보기입니다.
         if self.action in ['list', 'retrieve']:
             self.permission_classes = [permissions.IsAuthenticated]
 
@@ -35,6 +45,9 @@ class ItemViewSet(CreateModelMixin,
     serializer_class = ItemSerializer
     permission_classes = [CustomAuthenticated]
 
+    # 모델에 menu가 연결되어있기때문에 url에 있는 menu의 pk를 입력받은 데이터에 추가해주는 작업입니다.
+    # 이 작업이 있어야 Item object를 생성할떄 menu와 Foreignkey로 연결된 상태로 생성가능합니다.
+    # 이때 id만 있어도 되는 이유는 DB에서 PK로 연결되기 때문에 장고에서도 내부적으로 ID값으로도 연결가능하게 처리합니다.
     def create(self, request, *args, **kwargs):
         request.data.setdefault('menu', kwargs['product_pk'])
         return super().create(request, *args, **kwargs)

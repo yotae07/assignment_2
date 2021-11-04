@@ -3,6 +3,9 @@ from apps.products.models import Menu, Item, Tag
 
 
 class ItemSerializer(serializers.ModelSerializer):
+    # 이런 형태로 필드를 선언하면 마치 models에 필드 제약을 설정하는것처럼 설정할 수 있습니다.
+    # models에 선언하는것과 차이는 models에 선언할시 DB에 제약을 반영되어야만 제약이 설정가능하지만
+    # serializer에 선언시 코드단에서 제약을 바로 걸거나 해제할 수 있습니다.
     name = serializers.CharField(max_length=50)
     size = serializers.CharField(max_length=10)
     price = serializers.IntegerField(default=0)
@@ -10,14 +13,18 @@ class ItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Item
+        # fields 목록에 models에 있는 필드 이름보다 더 선언해도 되고 안해도 됩니다. 몇가지 필드들을 제외하곤 명시되어야만 평가됩니다.
         fields = ['id', 'menu', 'name', 'size', 'price', 'isSold']
 
+    # validate_필드명 형태로 하면 특정 필드에 대해서만 validate 체크가 가능합니다.
     def validate_size(self, value):
         if value not in [Item.L, Item.M, Item.S]:
             raise
 
         return value
 
+    # 이렇게 작성해놓을시 Item object들을 호출할시 밑에 명시된 형태로 나가게 됩니다.
+    # 만약 사용하지 않을시 Meta클래스에 fields에 정의된 값들만 serializer 혹은 model에 적힌 형태로 나가게됩니다.
     def to_representation(self, instance):
         return {
             'id': instance.id,
@@ -87,6 +94,10 @@ class MenuSerializer(serializers.ModelSerializer):
                         menu=instance
                     )
                 )
+            # 대량생성을위해 bulk를 사용했습니다.
+            # 기존의 create사용시 단일생성만 되지만 bulk 사용시 여러개를 생성할 수 있습니다.
+            # batch_size 옵션시 명시된 갯수만큼 끊어서 생성하는 작업을 하게됩니다. ex) 100개 생성시 10개씩*10번
+            # batch_size가 존재하는 이유는 DB의 트랜잭션이 장시간 걸릴 경우 성능의 문제가 있기 때문입니다.
             Item.objects.bulk_create(items_instance, batch_size=10)
         if tags:
             tags_instance = []
@@ -202,3 +213,150 @@ class MenuSerializer(serializers.ModelSerializer):
     #         field.set(value)
     #
     #     return instance
+    #
+    # def save(self, **kwargs):
+    #     assert hasattr(self, '_errors'), (
+    #         'You must call `.is_valid()` before calling `.save()`.'
+    #     )
+    #
+    #     assert not self.errors, (
+    #         'You cannot call `.save()` on a serializer with invalid data.'
+    #     )
+    #
+    #     # Guard against incorrect use of `serializer.save(commit=False)`
+    #     assert 'commit' not in kwargs, (
+    #         "'commit' is not a valid keyword argument to the 'save()' method. "
+    #         "If you need to access data before committing to the database then "
+    #         "inspect 'serializer.validated_data' instead. "
+    #         "You can also pass additional keyword arguments to 'save()' if you "
+    #         "need to set extra attributes on the saved model instance. "
+    #         "For example: 'serializer.save(owner=request.user)'.'"
+    #     )
+    #
+    #     assert not hasattr(self, '_data'), (
+    #         "You cannot call `.save()` after accessing `serializer.data`."
+    #         "If you need to access data before committing to the database then "
+    #         "inspect 'serializer.validated_data' instead. "
+    #     )
+    #
+    #     validated_data = {**self.validated_data, **kwargs}
+    #
+    #     if self.instance is not None:
+    #         self.instance = self.update(self.instance, validated_data)
+    #         assert self.instance is not None, (
+    #             '`update()` did not return an object instance.'
+    #         )
+    #     else:
+    #         self.instance = self.create(validated_data)
+    #         assert self.instance is not None, (
+    #             '`create()` did not return an object instance.'
+    #         )
+    #
+    #     return self.instance
+    #
+    # def is_valid(self, raise_exception=False):
+    #     assert hasattr(self, 'initial_data'), (
+    #         'Cannot call `.is_valid()` as no `data=` keyword argument was '
+    #         'passed when instantiating the serializer instance.'
+    #     )
+    #
+    #     if not hasattr(self, '_validated_data'):
+    #         try:
+    #             self._validated_data = self.run_validation(self.initial_data)
+    #         except ValidationError as exc:
+    #             self._validated_data = {}
+    #             self._errors = exc.detail
+    #         else:
+    #             self._errors = {}
+    #
+    #     if self._errors and raise_exception:
+    #         raise ValidationError(self.errors)
+    #
+    #     return not bool(self._errors)
+    #
+    # @property
+    # def data(self):
+    #     if hasattr(self, 'initial_data') and not hasattr(self, '_validated_data'):
+    #         msg = (
+    #             'When a serializer is passed a `data` keyword argument you '
+    #             'must call `.is_valid()` before attempting to access the '
+    #             'serialized `.data` representation.\n'
+    #             'You should either call `.is_valid()` first, '
+    #             'or access `.initial_data` instead.'
+    #         )
+    #         raise AssertionError(msg)
+    #
+    #     if not hasattr(self, '_data'):
+    #         if self.instance is not None and not getattr(self, '_errors', None):
+    #             self._data = self.to_representation(self.instance)
+    #         elif hasattr(self, '_validated_data') and not getattr(self, '_errors', None):
+    #             self._data = self.to_representation(self.validated_data)
+    #         else:
+    #             self._data = self.get_initial()
+    #     return self._data
+    #
+    # def to_internal_value(self, data):
+    #     """
+    #     Dict of native values <- Dict of primitive datatypes.
+    #     """
+    #     if not isinstance(data, Mapping):
+    #         message = self.error_messages['invalid'].format(
+    #             datatype=type(data).__name__
+    #         )
+    #         raise ValidationError({
+    #             api_settings.NON_FIELD_ERRORS_KEY: [message]
+    #         }, code='invalid')
+    #
+    #     ret = OrderedDict()
+    #     errors = OrderedDict()
+    #     fields = self._writable_fields
+    #
+    #     for field in fields:
+    #         validate_method = getattr(self, 'validate_' + field.field_name, None)
+    #         primitive_value = field.get_value(data)
+    #         try:
+    #             validated_value = field.run_validation(primitive_value)
+    #             if validate_method is not None:
+    #                 validated_value = validate_method(validated_value)
+    #         except ValidationError as exc:
+    #             errors[field.field_name] = exc.detail
+    #         except DjangoValidationError as exc:
+    #             errors[field.field_name] = get_error_detail(exc)
+    #         except SkipField:
+    #             pass
+    #         else:
+    #             set_value(ret, field.source_attrs, validated_value)
+    #
+    #     if errors:
+    #         raise ValidationError(errors)
+    #
+    #     return ret
+    #
+    # def to_representation(self, instance):
+    #     """
+    #     Object instance -> Dict of primitive datatypes.
+    #     """
+    #     ret = OrderedDict()
+    #     fields = self._readable_fields
+    #
+    #     for field in fields:
+    #         try:
+    #             attribute = field.get_attribute(instance)
+    #         except SkipField:
+    #             continue
+    #
+    #         # We skip `to_representation` for `None` values so that fields do
+    #         # not have to explicitly deal with that case.
+    #         #
+    #         # For related fields with `use_pk_only_optimization` we need to
+    #         # resolve the pk value.
+    #         check_for_none = attribute.pk if isinstance(attribute, PKOnlyObject) else attribute
+    #         if check_for_none is None:
+    #             ret[field.field_name] = None
+    #         else:
+    #             ret[field.field_name] = field.to_representation(attribute)
+    #
+    #     return ret
+    #
+    # def validate(self, attrs):
+    #     return attrs
