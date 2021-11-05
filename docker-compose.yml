@@ -6,7 +6,6 @@ services:
         restart: always
         volumes:
             - ./nginx:/etc/nginx/conf.d
-            - /Users/timo/develop/tmp:/var/log/nginx
         ports:
             - 80:80
         depends_on:
